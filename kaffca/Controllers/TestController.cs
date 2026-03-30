@@ -9,7 +9,7 @@ namespace kaffca.Controllers
     public class TestController : ControllerBase
     {
         private readonly KafkaProducerService _kafka;
-        public TestController(KafkaProducerService kafka)
+        public TestController(KafkaProducerService kafka) // Dependency Injection of KafkaProducerService
         {
             _kafka = kafka;
         }
