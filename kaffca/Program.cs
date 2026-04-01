@@ -1,6 +1,7 @@
 
 using kaffca.Model;
 using kaffca.Service;
+using StackExchange.Redis;
 
 namespace kaffca
 {
@@ -16,6 +17,16 @@ namespace kaffca
               builder.Configuration.GetSection("Kafka"));
 
             builder.Services.AddSingleton<KafkaProducerService>();
+
+            // l?y connection string
+            var redisConnection = builder.Configuration.GetSection("Redis")["ConnectionString"];
+
+            // ??ng ký Redis
+            builder.Services.AddSingleton<IConnectionMultiplexer>(
+                ConnectionMultiplexer.Connect(redisConnection)
+            );
+
+            builder.Services.AddScoped<RedisService>();
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
