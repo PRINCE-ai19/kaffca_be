@@ -73,7 +73,7 @@ namespace kaffca.Service
                 .Build();
         }
 
-        public async Task<DeliveryResult<Null, string>> SendAsync(object data, CancellationToken cancellationToken = default)
+        public async Task<DeliveryResult<Null, string>> SendAsync(MessageDTO data, CancellationToken cancellationToken = default)
         {
             var json = JsonSerializer.Serialize(data);
             return await _producer.ProduceAsync(

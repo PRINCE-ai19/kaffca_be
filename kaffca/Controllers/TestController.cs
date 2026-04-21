@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using kaffca.Model;
 using kaffca.Service;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,25 +17,37 @@ namespace kaffca.Controllers
             _kafka = kafka;
             _logger = logger;
         }
-
+        
+            
         [HttpPost]
-        public async Task<IActionResult> Send(CancellationToken cancellationToken)
+        public async Task<IActionResult> Send([FromQuery] int count = 1, CancellationToken cancellationToken = default)
         {
-            var data = new
-            {
-                Id = 1,
-                Name = "Hello Kafka"
-            };
+            if (count <= 0) count = 1;
+            if (count > 100) count = 100; // Cap to 100 for safety
+
+            var messages = GenerateRandomMessages(count);
+            var results = new List<object>();
 
             try
             {
-                var result = await _kafka.SendAsync(data, cancellationToken);
+                foreach (var messageData in messages)
+                {
+                    var result = await _kafka.SendAsync(messageData, cancellationToken);
+                    results.Add(new
+                    {
+                        messageData.TransactionId,
+                        messageData.Type,
+                        messageData.Amount,
+                        result.Topic,
+                        Partition = result.Partition.Value,
+                        Offset = result.Offset.Value
+                    });
+                }
+
                 return Ok(new
                 {
-                    Message = "Sent to Kafka!",
-                    result.Topic,
-                    Partition = result.Partition.Value,
-                    Offset = result.Offset.Value
+                    Message = $"Successfully sent {results.Count} messages to Kafka!",
+                    Data = results
                 });
             }
             catch (OperationCanceledException)
@@ -54,6 +67,47 @@ namespace kaffca.Controllers
                     ex.Error.IsFatal
                 });
             }
+        }
+
+        private List<MessageDTO> GenerateRandomMessages(int count)
+        {
+            var random = new Random();
+            var types = new[] { "PAYMENT", "TRANSFER", "WITHDRAW" };
+            var locations = new[] { "Ho Chi Minh City, VN", "Ha Noi, VN", "Da Nang, VN", "Can Tho, VN" };
+            var devices = new[] { "IPHONE_15_PRO_VNM", "SAMSUNG_S24_ULTRA", "XIAOMI_14_PRO", "WEB_CHROME_WINDOWS" };
+            var reasons = new[] { "Suspected Money Laundering", "Unusual Activity", "Large Transaction", "New Device Login" };
+
+            var messages = new List<MessageDTO>();
+
+            for (int i = 0; i < count; i++)
+            {
+                var amount = (decimal)(random.Next(100, 100000) * 1000);
+                var oldBalance = (decimal)(random.Next(5000, 100000) * 1000);
+                var senderId = $"C{random.Next(100000000, 999999999)}";
+
+                messages.Add(new MessageDTO
+                {
+                    TransactionId = $"TXN-{DateTime.Now:yyyyMMdd}-{random.Next(1000, 9999)}",
+                    Timestamp = DateTime.UtcNow,
+                    SenderId = senderId,
+                    ReceiverId = $"M{random.Next(100000000, 999999999)}",
+                    Type = types[random.Next(types.Length)],
+                    Amount = amount,
+                    OldBalanceSender = oldBalance,
+                    NewBalanceSender = oldBalance - amount,
+                    DeviceId = devices[random.Next(devices.Length)],
+                    Location = locations[random.Next(locations.Length)],
+                    IpAddress = $"{random.Next(1, 255)}.{random.Next(1, 255)}.{random.Next(1, 255)}.{random.Next(1, 255)}",
+                    IsFraud = random.Next(0, 10) == 0 ? 1 : 0, // 10% chance of being fraud
+                    FraudType = null,
+
+                    AccountId = senderId,
+                    Reason = reasons[random.Next(reasons.Length)],
+                    AddedAt = DateTime.UtcNow.AddDays(-random.Next(1, 30))
+                });
+            }
+
+            return messages;
         }
     }
 }

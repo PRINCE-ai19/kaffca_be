@@ -23,9 +23,9 @@ namespace kaffca.Controllers
         }
 
         [HttpGet("get")]
-        public async Task<IActionResult> Get(string key)
+        public async Task<IActionResult> Get()
         {
-            var value = await _redis.GetAsync(key);
+            var value = await _redis.GetAllAsync();
             return Ok(value);
         }
     }
